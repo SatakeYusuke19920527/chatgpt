@@ -1,50 +1,28 @@
+import * as functions from 'firebase-functions';
 import { openai, regionFunctions } from '../../helper';
+
+const runtimeOpts: functions.RuntimeOptions = {
+  timeoutSeconds: 540,
+  memory: '1GB',
+};
 
 /**
  * chatGPT
- * chatgpt.v1.sample.getMessage({message: "日本人が好きな食べ物は？"})
- * リクエスト
- * {
- *     "model": "gpt-3.5-turbo",
- *     "messages": [{"role": "user", "content": "Hello!"}]
- *  }
- * レスポンス
- * {
-  "id": "chatcmpl-123",
-  "object": "chat.completion",
-  "created": 1677652288,
-  "choices": [{
-    "index": 0,
-    "message": {
-      "role": "assistant",
-      "content": "\n\nHello there, how may I assist you today?",
-    },
-    "finish_reason": "stop"
-  }],
-  "usage": {
-    "prompt_tokens": 9,
-    "completion_tokens": 12,
-    "total_tokens": 21
-  }
-  }
+ * chatgpt.v1.Gpt35.getMessage({message: "日本人が好きな食べ物は？"})
  */
-export const getMessage = regionFunctions.https.onCall(
-  async (data, context) => {
+export const getMessage = regionFunctions
+  .runWith(runtimeOpts)
+  .https.onCall(async (data, context) => {
     const content = `
-      以下のメッセージを箇条書きで5つ表示して
       ${data.message}
-      フォーマットは以下
-      [{1:"xxxxx"},{2:"xxxxx"},{3:"xxxxx"},{4:"xxxxx"},{5:"xxxxx"}]
+      # 上記を以下のようなJavaSctiptの配列の形で返して
+      > ["data1","data2","data3"]
+      # 他の文字は不要です。
     `;
 
     const completion = await openai.createChatCompletion({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: content }],
     });
-
-    const message = completion.data.choices[0].message?.content;
-    console.log(message);
-
-    return message;
-  }
-);
+    return JSON.stringify(completion.data.choices[0].message?.content);
+  });
